@@ -1,127 +1,13 @@
-pipeline {
-    agent any
-
-    stages {
-        stage('Build') {
-            steps {
-                sh 'docker-compose down || true'
-                sh 'docker-compose up --build -d'
-            }
-        }
-    }
-}pipeline {
-    agent any
-pipeline {
-    agent any
-
-    stages {
-        stage('Build') {
-            steps {
-                sh 'docker-compose down || true'
-                sh 'docker-compose up --build -d'
-            }
-        }
-    }
-}
-    stages {
-        stage('Clone Repo') {
-            steps {
-                git branch: 'main', url: 'https://github.com/hassan461-hub/CI-CD-Pipeline-using-Jenkins-GitHub-webhook-ubuntu-AWS-EC2-docker-.git'
-            }
-        }
-
-        stage('Stop Old Containers') {
-            steps {
-                sh 'docker-compose down || true'
-            }
-        }
-
-        stage('Build and Deploy') {
-            steps {
-                sh 'docker-compose up --build -d'
-            }
-        }
-
-        stage('Check Containers') {
-            steps {
-                sh 'docker ps'
-            }
-        }
-    }
-}pipeline {
-    agent any
-
-    stages {
-        stage('Clone Repo') {
-            steps {
-                git branch: 'main', url: 'https://github.com/hassan461-hub/CI-CD-Pipeline-using-Jenkins-GitHub-webhook-ubuntu-AWS-EC2-docker-.git'
-            }
-        }
-
-        stage('Stop Old Containers') {
-            steps {
-                sh 'docker-compose down || true'
-            }
-        }
-
-        stage('Build and Deploy') {
-            steps {
-                sh 'docker-compose up --build -d'
-            }
-        }
-
-        stage('Check Containers') {
-            steps {
-                sh 'docker ps'
-            }
-        }
-    }
-}pipeline {
-    agent any
-
-    environment {
-        CONTAINER_NAME = "nestjs-app"
-        IMAGE_NAME = "nesths-image"
-        EMAIL = "hassaanabid461@gmail.com"
-        PORT = "3000"
+node {
+    stage('Stop Old Containers') {
+        sh 'sudo docker-compose down || true'
     }
 
-    stages {
-        stage('Clone Repo'){
-            steps{
-                git branch: 'main', url: 'https://github.com/hassan461-hub/CI-CD-Pipeline-using-Jenkins-GitHub-webhook-ubuntu-AWS-EC2-docker-.git'
-            }
-        }
+    stage('Build and Deploy') {
+        sh 'sudo docker-compose up --build -d'
+    }
 
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t $IMAGE_NAME .'
-            }
-        }
-        stage('Stop & Remove Previous Container') {
-            steps {
-                sh '''
-                    docker stop $CONTAINER_NAME || true
-                    docker rm $CONTAINER_NAME || true
-                '''
-            }
-        }
-        stage('Docker Container Run') {
-            steps {
-                sh '''
-                    docker run -d -p ${PORT}:${PORT} --name $CONTAINER_NAME $IMAGE_NAME
-                '''
-            }
-        }
-        stage('Send Email Notification') {
-            steps {
-               emailext(
-                subject: "NestJS App Deployed Successfully on EC2!",
-                body: "Your Nest JS app is succesfully Deployed! http://13.62.103.42:${PORT}/",
-                to: "${EMAIL}"
-               )
-            }
-        }
-
+    stage('Check Containers') {
+        sh 'sudo docker ps'
     }
 }
