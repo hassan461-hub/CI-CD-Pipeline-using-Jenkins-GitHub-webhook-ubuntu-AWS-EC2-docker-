@@ -1,6 +1,62 @@
 pipeline {
     agent any
 
+    stages {
+        stage('Clone Repo') {
+            steps {
+                git branch: 'main', url: 'https://github.com/hassan461-hub/CI-CD-Pipeline-using-Jenkins-GitHub-webhook-ubuntu-AWS-EC2-docker-.git'
+            }
+        }
+
+        stage('Stop Old Containers') {
+            steps {
+                sh 'docker-compose down || true'
+            }
+        }
+
+        stage('Build and Deploy') {
+            steps {
+                sh 'docker-compose up --build -d'
+            }
+        }
+
+        stage('Check Containers') {
+            steps {
+                sh 'docker ps'
+            }
+        }
+    }
+}pipeline {
+    agent any
+
+    stages {
+        stage('Clone Repo') {
+            steps {
+                git branch: 'main', url: 'https://github.com/hassan461-hub/CI-CD-Pipeline-using-Jenkins-GitHub-webhook-ubuntu-AWS-EC2-docker-.git'
+            }
+        }
+
+        stage('Stop Old Containers') {
+            steps {
+                sh 'docker-compose down || true'
+            }
+        }
+
+        stage('Build and Deploy') {
+            steps {
+                sh 'docker-compose up --build -d'
+            }
+        }
+
+        stage('Check Containers') {
+            steps {
+                sh 'docker ps'
+            }
+        }
+    }
+}pipeline {
+    agent any
+
     environment {
         CONTAINER_NAME = "nestjs-app"
         IMAGE_NAME = "nesths-image"
