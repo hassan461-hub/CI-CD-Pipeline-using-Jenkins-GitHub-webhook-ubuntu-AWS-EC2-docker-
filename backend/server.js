@@ -18,7 +18,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/data", (req, res) => {
-  db.query("SELECT 'Hello from hassan abid", (err, result) => {
+  db.query("SELECT 'Hello from MySQL DB' AS message", (err, result) => {
     if (err) return res.status(500).json(err);
     res.json(result);
   });
