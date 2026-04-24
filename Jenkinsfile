@@ -2,6 +2,28 @@ pipeline {
     agent any
 
     stages {
+        stage('Build') {
+            steps {
+                sh 'docker-compose down || true'
+                sh 'docker-compose up --build -d'
+            }
+        }
+    }
+}pipeline {
+    agent any
+pipeline {
+    agent any
+
+    stages {
+        stage('Build') {
+            steps {
+                sh 'docker-compose down || true'
+                sh 'docker-compose up --build -d'
+            }
+        }
+    }
+}
+    stages {
         stage('Clone Repo') {
             steps {
                 git branch: 'main', url: 'https://github.com/hassan461-hub/CI-CD-Pipeline-using-Jenkins-GitHub-webhook-ubuntu-AWS-EC2-docker-.git'
