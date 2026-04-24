@@ -1,4 +1,43 @@
-fetch("http://13.62.103.42:3000/data")<!DOCTYPE html>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>3 Tier User App</title>
+  <style>
+    body { font-family: Arial; background: #f4f6f8; padding: 40px; }
+    .box { background: white; padding: 25px; max-width: 500px; border-radius: 10px; }
+    input { padding: 10px; width: 90%; margin-bottom: 10px; }
+    button { padding: 10px 20px; cursor: pointer; }
+    #output { margin-top: 20px; font-weight: bold; color: green; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>3-Tier Web Application</h1>
+    <p>Frontend → Backend → MySQL Database</p>
+
+    <input type="text" id="name" placeholder="Hassan ">
+    <br>
+    <button onclick="sendName()">Submit</button>
+
+    <p id="output"></p>
+  </div>
+
+  <script>
+    async function sendName() {
+      const name = document.getElementById("name").value;
+
+      const res = await fetch("http://13.62.103.42:3000/api/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+
+      const data = await res.json();
+      document.getElementById("output").innerText = data.message;
+    }
+  </script>
+</body>
+</html>fetch("http://13.62.103.42:3000/data")<!DOCTYPE html>
 <html>
 <head>
   <title>3 Tier App</title>
