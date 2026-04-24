@@ -1,0 +1,10 @@
+CREATE DATABASE IF NOT EXISTS myappdb;
+
+USE myappdb;
+
+CREATE TABLE IF NOT EXISTS test (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message VARCHAR(255)
+);
+
+INSERT INTO test (message) VALUES ('Hello from MySQL DB');

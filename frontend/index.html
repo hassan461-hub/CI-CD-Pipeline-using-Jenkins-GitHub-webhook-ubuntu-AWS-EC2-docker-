@@ -1,0 +1,22 @@
+fetch("http://13.62.103.42:3000/data")<!DOCTYPE html>
+<html>
+<head>
+  <title>3 Tier App</title>
+</head>
+<body>
+  <h1>Frontend Tier Running</h1>
+  <p>This is the frontend of the 3-tier application.</p>
+
+  <button onclick="loadData()">Get Backend Data</button>
+  <p id="output"></p>
+
+  <script>
+    async function loadData() {
+      const res = await fetch("http://13.62.103.42:3000/data");
+      const data = await res.json();
+      document.getElementById("output").innerText = JSON.stringify(data);
+    }
+  </script>
+
+</body>
+</html>
