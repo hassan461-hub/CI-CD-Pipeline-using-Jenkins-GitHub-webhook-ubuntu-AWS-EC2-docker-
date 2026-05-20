@@ -1,65 +1,64 @@
 #!/usr/bin/env groovy
 
-// Jenkins Pipeline for Secure Cloud-Native DevOps Platform
-// This pipeline automates build, test, security scanning, and deployment
-
 pipeline {
     agent any
 
-    // Define pipeline parameters
     parameters {
         choice(name: 'ENVIRONMENT', choices: ['development', 'staging', 'production'], description: 'Deployment environment')
         booleanParam(name: 'SKIP_TESTS', defaultValue: false, description: 'Skip unit tests')
         booleanParam(name: 'SKIP_SECURITY', defaultValue: false, description: 'Skip security scanning')
     }
 
-    // Environment variables
     environment {
         PROJECT_NAME = 'secure-cloud-native-devops-platform'
         DOCKER_IMAGE_FRONTEND = "${PROJECT_NAME}-frontend"
         DOCKER_IMAGE_BACKEND = "${PROJECT_NAME}-backend"
         REGISTRY = 'localhost'
-        GIT_COMMIT_MSG = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
+        GITHUB_REPO = 'https://github.com/hassan461-hub/CI-CD-Pipeline-using-Jenkins-GitHub-webhook-ubuntu-AWS-EC2-docker-.git'
     }
 
-    // Build triggers
     triggers {
         githubPush()
         pollSCM('H/15 * * * *')
     }
 
     stages {
-        // ==================== CHECKOUT ====================
+
         stage('Checkout') {
             steps {
                 echo "========== STAGE: Checkout =========="
-               git branch: 'main', url: 'https://github.com/hassan461-hub/CI-CD-Pipeline-using-Jenkins-GitHub-webhook-ubuntu-AWS-EC2-docker-.git'
+                git branch: 'main', url: "${GITHUB_REPO}"
+
                 sh '''
-                    echo "Repository: ${GIT_URL}"
-                    echo "Branch: ${GIT_BRANCH}"
-                    echo "Commit: ${GIT_COMMIT}"
+                    echo "Repository checked successfully"
+                    echo "Current branch:"
+                    git branch
+                    echo "Recent commits:"
                     git log --oneline -5
                 '''
             }
         }
 
-        // ==================== ENVIRONMENT SETUP ====================
         stage('Environment Setup') {
             steps {
                 echo "========== STAGE: Environment Setup =========="
                 sh '''
                     echo "Environment: ${ENVIRONMENT}"
+                    echo "Project Name: ${PROJECT_NAME}"
                     echo "Docker Version:"
                     docker --version
                     echo "Docker Compose Version:"
                     docker compose version
                     echo "System Info:"
                     uname -a
+                    echo "Current Directory:"
+                    pwd
+                    echo "Project Files:"
+                    ls -la
                 '''
             }
         }
 
-        // ==================== BACKEND INSTALL ====================
         stage('Backend Install') {
             steps {
                 echo "========== STAGE: Backend Install =========="
@@ -68,13 +67,11 @@ pipeline {
                         echo "Installing backend dependencies..."
                         npm --version
                         npm install
-                        ls -la node_modules | head -10
                     '''
                 }
             }
         }
 
-        // ==================== UNIT TESTS ====================
         stage('Unit Test') {
             when {
                 expression {
@@ -85,14 +82,13 @@ pipeline {
                 echo "========== STAGE: Unit Test =========="
                 dir('backend') {
                     sh '''
-                        echo "Running unit tests..."
-                        npm test || echo "No tests configured - skipping"
+                        echo "Running backend tests..."
+                        npm test || echo "No tests configured - continuing"
                     '''
                 }
             }
         }
 
-        // ==================== SECURITY SCAN ====================
         stage('Security Scan') {
             when {
                 expression {
@@ -101,34 +97,27 @@ pipeline {
             }
             steps {
                 echo "========== STAGE: Security Scan =========="
-                
-                // NPM Audit
+
                 dir('backend') {
                     sh '''
-                        echo "Running npm audit for vulnerabilities..."
-                        npm audit --production || true
-                        echo "npm audit completed - vulnerabilities (if any) listed above"
+                        echo "Running npm audit..."
+                        npm audit --omit=dev || true
+                        echo "npm audit completed"
                     '''
                 }
 
-                // Trivy filesystem scan (if installed)
                 sh '''
-                    echo "Checking for Trivy installation..."
-                    if command -v trivy &> /dev/null; then
+                    echo "Checking Trivy installation..."
+                    if command -v trivy > /dev/null 2>&1; then
                         echo "Running Trivy filesystem scan..."
                         trivy fs . --exit-code 0 || true
                     else
-                        echo "Trivy not installed - skipping image scanning"
-                        echo "To install Trivy on Ubuntu:"
-                        echo "  wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | apt-key add -"
-                        echo "  echo 'deb https://aquasecurity.github.io/trivy-repo/deb focal main' | tee /etc/apt/sources.list.d/trivy.list"
-                        echo "  apt update && apt install trivy"
+                        echo "Trivy is not installed, skipping Trivy scan"
                     fi
                 '''
             }
         }
 
-        // ==================== BUILD DOCKER IMAGES ====================
         stage('Docker Compose Build') {
             steps {
                 echo "========== STAGE: Docker Compose Build =========="
@@ -136,66 +125,75 @@ pipeline {
                     echo "Building Docker images..."
                     docker compose build
                     echo "Docker images built successfully"
-                    docker images | grep ${PROJECT_NAME}
+                    docker images | head -20
                 '''
             }
         }
 
-        // ==================== DEPLOY ====================
         stage('Docker Compose Deploy') {
             steps {
                 echo "========== STAGE: Docker Compose Deploy =========="
                 sh '''
-                    echo "Stopping previous deployment (if any)..."
+                    echo "Stopping old deployment..."
                     docker compose down || true
-                    
-                    echo "Starting services..."
+
+                    echo "Removing old containers if they already exist..."
+                    docker rm -f mysql-db backend-app frontend-app prometheus grafana cadvisor node-exporter || true
+
+                    echo "Starting new deployment..."
                     docker compose up -d --build
-                    
-                    echo "Waiting for services to be ready..."
-                    sleep 10
-                    
+
+                    echo "Waiting for services to start..."
+                    sleep 15
+
+                    echo "Current container status:"
                     docker compose ps
                 '''
             }
         }
 
-        // ==================== VERIFY DEPLOYMENT ====================
         stage('Verify Deployment') {
             steps {
                 echo "========== STAGE: Verify Deployment =========="
                 sh '''
                     echo "Checking running containers..."
                     docker ps
-                    
-                    echo ""
-                    echo "Container Status:"
-                    docker compose ps
-                    
+
                     echo ""
                     echo "Testing Frontend..."
                     curl -f http://localhost || exit 1
-                    echo "✓ Frontend is responding"
-                    
+                    echo "Frontend is responding"
+
+                    echo ""
+                    echo "Testing Backend Root..."
+                    curl -f http://localhost:3000 || exit 1
+                    echo "Backend root endpoint is responding"
+
                     echo ""
                     echo "Testing Backend Health..."
                     curl -f http://localhost:3000/api/health || exit 1
-                    echo "✓ Backend health check passed"
-                    
+                    echo "Backend health endpoint is responding"
+
                     echo ""
-                    echo "Testing API Message Endpoint..."
-                    curl -s http://localhost:3000/api/message | jq '.' || exit 1
-                    echo "✓ API message endpoint working"
-                    
+                    echo "Testing Backend Message API..."
+                    curl -f http://localhost:3000/api/message || exit 1
+                    echo "Backend message API is responding"
+
                     echo ""
-                    echo "Container Logs Summary:"
-                    docker compose logs --tail 5
+                    echo "Testing Prometheus..."
+                    curl -f http://localhost:9090 || true
+
+                    echo ""
+                    echo "Testing Grafana..."
+                    curl -f http://localhost:4000 || true
+
+                    echo ""
+                    echo "Deployment verification completed"
                 '''
             }
         }
     }
 
-    // ==================== POST SUCCESS ====================
     post {
         success {
             echo "========== PIPELINE SUCCESS =========="
@@ -206,16 +204,18 @@ pipeline {
                 echo "╚════════════════════════════════════════════╝"
                 echo ""
                 echo "Access the application:"
-                echo "  Frontend:  http://localhost"
-                echo "  Grafana:   http://localhost:4000 (admin/admin123)"
+                echo "  Frontend:   http://localhost"
+                echo "  Backend:    http://localhost:3000"
+                echo "  Health:     http://localhost:3000/api/health"
+                echo "  Message:    http://localhost:3000/api/message"
+                echo "  Grafana:    http://localhost:4000"
                 echo "  Prometheus: http://localhost:9090"
                 echo ""
+                echo "Running containers:"
+                docker ps
             '''
         }
-    }
 
-    // ==================== POST FAILURE ====================
-    post {
         failure {
             echo "========== PIPELINE FAILED =========="
             sh '''
@@ -226,20 +226,18 @@ pipeline {
                 echo ""
                 echo "Troubleshooting steps:"
                 echo "1. Check logs: docker compose logs"
-                echo "2. Check specific service: docker compose logs <service-name>"
-                echo "3. Verify resources: docker ps && docker images"
-                echo "4. Check network: docker network ls"
+                echo "2. Check backend logs: docker compose logs backend-app"
+                echo "3. Check frontend logs: docker compose logs frontend-app"
+                echo "4. Check MySQL logs: docker compose logs mysql-db"
+                echo "5. Check containers: docker ps -a"
                 echo ""
-                echo "Recent logs:"
-                docker compose logs --tail 20 || true
+                echo "Recent Docker Compose logs:"
+                docker compose logs --tail 30 || true
             '''
         }
-    }
 
-    // ==================== POST ALWAYS ====================
-    post {
         always {
-            echo "========== PIPELINE CLEANUP =========="
+            echo "========== PIPELINE FINISHED =========="
             sh '''
                 echo "Pipeline execution completed at: $(date)"
                 echo "Workspace: $(pwd)"
