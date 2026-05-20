@@ -1,0 +1,104 @@
+# Git Ignore File for DevOps Platform
+# Prevents committing unnecessary files to version control
+
+# ==================== DEPENDENCIES ====================
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+package-lock.yaml
+
+# ==================== ENVIRONMENT VARIABLES ====================
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# ==================== DOCKER ====================
+.dockerignore
+docker-compose.override.yml
+
+# ==================== BUILD ARTIFACTS ====================
+dist/
+build/
+*.o
+*.a
+*.so
+*.out
+
+# ==================== IDE & EDITOR ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-workspace
+*.sublime-project
+
+# ==================== OS SPECIFIC ====================
+.DS_Store
+Thumbs.db
+*.log
+*.pid
+
+# ==================== DATABASE ====================
+*.db
+*.sqlite
+*.sqlite3
+mysql_data/
+postgres_data/
+
+# ==================== TERRAFORM ====================
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.*.backup
+*.tfvars
+*.tfvars.json
+override.tf.json
+
+# ==================== ANSIBLE ====================
+*.retry
+vault-password-file
+
+# ==================== MONITORING ====================
+prometheus_data/
+grafana_data/
+
+# ==================== SECURITY ====================
+*.pem
+*.key
+*.crt
+*.p12
+vault.txt
+secrets/
+
+# ==================== CI/CD ====================
+.jenkins/
+.github/workflows/.env
+jenkins_data/
+
+# ==================== TEMPORARY FILES ====================
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+*.cache
+
+# ==================== TEST COVERAGE ====================
+coverage/
+.nyc_output/
+htmlcov/
+test-results/
+
+# ==================== DOCUMENTATION ====================
+docs/_build/
+site/
+
+# ==================== LOCAL DEVELOPMENT ====================
+local_env.sh
+setup_local.sh
+debug.log

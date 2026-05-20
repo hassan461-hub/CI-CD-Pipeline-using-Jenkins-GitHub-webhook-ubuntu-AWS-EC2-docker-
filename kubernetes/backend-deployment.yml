@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: default
+  labels:
+    app: backend
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        version: v1
+    spec:
+      containers:
+      - name: backend
+        image: backend-app:latest
+        imagePullPolicy: Never  # Use local image, change to IfNotPresent for registry
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: DB_HOST
+          value: mysql-service
+        - name: DB_USER
+          value: root
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: password
+        - name: DB_NAME
+          value: devopsdb
+        - name: PORT
+          value: "3000"
+        - name: NODE_ENV
+          value: production
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "500m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 40
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: default
+  labels:
+    app: backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: backend
+
+---
+# Kubernetes Deployment Notes:
+# 1. This deployment assumes a StatefulSet MySQL is available
+# 2. Database credentials should use Secrets (see secret example below)
+# 3. For production, use proper image registries (ECR, Docker Hub, etc.)
+# 4. Resource limits prevent pod eviction
+# 5. Health probes ensure container orchestration works properly
+# 6. Replicas provide high availability and load distribution
+# 7. Readiness probes ensure traffic only goes to ready pods
+# 8. Liveness probes restart failed pods automatically
+
+---
+# Example Secret creation (run manually):
+# kubectl create secret generic db-secret --from-literal=password=root
+# Or define in YAML:
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: db-secret
+# type: Opaque
+# data:
+#   password: cm9vdA==  # base64 encoded "root"

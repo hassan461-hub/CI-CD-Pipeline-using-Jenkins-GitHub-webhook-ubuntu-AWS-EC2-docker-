@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: default
+  labels:
+    app: frontend
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        version: v1
+    spec:
+      containers:
+      - name: frontend
+        image: frontend-app:latest
+        imagePullPolicy: Never  # Use local image, change to IfNotPresent for registry
+        ports:
+        - containerPort: 80
+          name: http
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: default
+  labels:
+    app: frontend
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: frontend
+
+---
+# Note: This Kubernetes deployment file is for demonstration on Minikube or EKS
+# Key differences from Docker Compose:
+# 1. Kubernetes requires separate Service and Deployment definitions
+# 2. Image pull policy needs to be set appropriately
+# 3. Resource requests and limits should be configured for production
+# 4. StatefulSets would be used for databases with persistent data
+# 5. ConfigMaps and Secrets manage configuration separately
+# 6. Namespaces provide isolation between environments
+# 7. NetworkPolicies control traffic between pods
+# 8. Ingress controllers replace simple port mappings for routing

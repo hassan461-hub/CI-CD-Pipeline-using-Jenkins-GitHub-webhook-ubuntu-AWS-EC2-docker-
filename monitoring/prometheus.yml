@@ -1,0 +1,48 @@
+# Prometheus Configuration File
+# Scrapes metrics from various services in the DevOps Platform
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'secure-devops-platform'
+
+# Alerting configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files: []
+
+scrape_configs:
+  # ==================== PROMETHEUS SELF ====================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ==================== CADVISOR - CONTAINER METRICS ====================
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metrics_path: '/metrics'
+
+  # ==================== NODE EXPORTER - HOST METRICS ====================
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    metrics_path: '/metrics'
+
+  # ==================== BACKEND APPLICATION ====================
+  - job_name: 'backend-app'
+    static_configs:
+      - targets: ['backend-app:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # ==================== MYSQL DATABASE ====================
+  - job_name: 'mysql-db'
+    static_configs:
+      - targets: ['mysql-db:3306']
+    metrics_path: '/metrics'
+    scrape_interval: 30s

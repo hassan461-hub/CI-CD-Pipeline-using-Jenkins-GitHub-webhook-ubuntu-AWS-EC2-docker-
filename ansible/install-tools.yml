@@ -1,0 +1,173 @@
+---
+# Ansible Playbook: Install and Configure DevOps Tools
+# This playbook installs Docker, Docker Compose, Git, and other required tools
+
+- name: "Install DevOps Tools on Ubuntu"
+  hosts: devops_servers
+  become: yes  # Run with sudo privileges
+  gather_facts: yes
+  
+  vars:
+    # Docker and utilities
+    docker_packages:
+      - docker.io
+      - docker-compose-plugin
+    
+    # Additional utilities
+    utility_packages:
+      - git
+      - curl
+      - wget
+      - unzip
+      - htop
+      - vim
+      - net-tools
+      - python3-pip
+
+  tasks:
+    # ==================== SYSTEM UPDATES ====================
+    - name: "Update apt cache"
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      register: apt_update
+    
+    - name: "Upgrade all packages"
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+      when: apt_update.changed
+    
+    # ==================== INSTALL DOCKER ====================
+    - name: "Install Docker and related packages"
+      apt:
+        name: "{{ docker_packages }}"
+        state: present
+      register: docker_install
+    
+    - name: "Start Docker service"
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+    
+    - name: "Add ubuntu user to docker group"
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+      register: user_group_add
+    
+    - name: "Verify Docker installation"
+      command: docker --version
+      register: docker_version
+      changed_when: false
+    
+    - name: "Display Docker version"
+      debug:
+        msg: "{{ docker_version.stdout }}"
+    
+    # ==================== INSTALL DOCKER COMPOSE ====================
+    - name: "Verify Docker Compose installation"
+      command: docker compose version
+      register: compose_version
+      changed_when: false
+      ignore_errors: yes
+    
+    - name: "Display Docker Compose version"
+      debug:
+        msg: "{{ compose_version.stdout }}"
+      when: compose_version.rc == 0
+    
+    # ==================== INSTALL UTILITIES ====================
+    - name: "Install utility packages"
+      apt:
+        name: "{{ utility_packages }}"
+        state: present
+    
+    - name: "Verify Git installation"
+      command: git --version
+      register: git_version
+      changed_when: false
+    
+    - name: "Display Git version"
+      debug:
+        msg: "{{ git_version.stdout }}"
+    
+    # ==================== INSTALL NODE.JS (OPTIONAL) ====================
+    - name: "Add NodeSource repository key"
+      apt_key:
+        url: https://deb.nodesource.com/gpgkey/nodesource.gpg.key
+        state: present
+    
+    - name: "Add NodeSource repository"
+      apt_repository:
+        repo: "deb https://deb.nodesource.com/node_18.x {{ ansible_distribution_release }} main"
+        state: present
+        filename: nodesource
+    
+    - name: "Install Node.js"
+      apt:
+        name:
+          - nodejs
+          - npm
+        state: present
+    
+    - name: "Verify Node.js installation"
+      command: node --version
+      register: node_version
+      changed_when: false
+    
+    - name: "Display Node.js version"
+      debug:
+        msg: "Node.js {{ node_version.stdout }} installed"
+    
+    # ==================== CONFIGURE PERMISSIONS ====================
+    - name: "Reset SSH connection to apply group membership"
+      meta: reset_connection
+    
+    # ==================== VERIFY INSTALLATIONS ====================
+    - name: "Test Docker installation (run hello-world)"
+      command: docker run --rm hello-world
+      become: yes
+      become_user: ubuntu
+      register: docker_test
+      ignore_errors: yes
+      changed_when: false
+    
+    - name: "Docker hello-world test result"
+      debug:
+        msg: "Docker is working correctly"
+      when: docker_test.rc == 0
+    
+    # ==================== SUMMARY ====================
+    - name: "Installation Summary"
+      debug:
+        msg:
+          - "=========================================="
+          - "Installation Complete!"
+          - "=========================================="
+          - "Docker: {{ docker_version.stdout }}"
+          - "Docker Compose: {{ compose_version.stdout }}"
+          - "Git: {{ git_version.stdout }}"
+          - "Node.js: {{ node_version.stdout }}"
+          - ""
+          - "Next Steps:"
+          - "1. Clone the DevOps project repository"
+          - "2. Navigate to the project directory"
+          - "3. Run: docker compose up -d --build"
+          - "4. Access the application at http://localhost"
+          - ""
+
+# Run this playbook with:
+# ansible-playbook -i inventory.ini install-tools.yml
+#
+# For single host without SSH key:
+# ansible-playbook -i inventory.ini install-tools.yml -k
+#
+# For verbose output:
+# ansible-playbook -i inventory.ini install-tools.yml -v
+#
+# For specific host:
+# ansible-playbook -i inventory.ini install-tools.yml --limit=devops_server

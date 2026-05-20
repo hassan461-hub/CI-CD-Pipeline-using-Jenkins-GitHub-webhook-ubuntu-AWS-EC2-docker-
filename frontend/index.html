@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Cloud-Native DevOps Platform</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Secure Cloud-Native DevOps Platform</h1>
+            <p class="subtitle">Enterprise-Grade CI/CD & Container Orchestration</p>
+        </header>
+
+        <main>
+            <section class="cards-grid">
+                <div class="card">
+                    <div class="card-icon">🚀</div>
+                    <h2>CI/CD Pipeline</h2>
+                    <p>Automated build, test, and deployment pipeline using Jenkins for continuous integration and continuous deployment.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🐳</div>
+                    <h2>Docker Containerization</h2>
+                    <p>Containerized microservices using Docker and Docker Compose for consistent deployment across environments.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🔒</div>
+                    <h2>Security Scanning</h2>
+                    <p>Comprehensive security scanning with npm audit and Trivy to identify vulnerabilities in code and container images.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">📊</div>
+                    <h2>Monitoring Dashboard</h2>
+                    <p>Real-time monitoring with Prometheus and Grafana for comprehensive system metrics and performance analytics.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">☸️</div>
+                    <h2>Kubernetes Ready</h2>
+                    <p>Production-ready Kubernetes manifests for scalable deployment on Minikube, EKS, or any Kubernetes cluster.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">⚙️</div>
+                    <h2>Infrastructure as Code</h2>
+                    <p>Terraform and Ansible templates for automated AWS infrastructure provisioning and configuration management.</p>
+                </div>
+            </section>
+
+            <section class="action-section">
+                <h2>Backend API Test</h2>
+                <button id="testBtn" class="btn-primary">Test Backend API</button>
+                <div id="response" class="response-box"></div>
+            </section>
+
+            <section class="status-section">
+                <h2>System Status</h2>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="status-label">Backend Health:</span>
+                        <span id="backendStatus" class="status-indicator">Checking...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Database Connection:</span>
+                        <span id="dbStatus" class="status-indicator">Checking...</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Secure Cloud-Native DevOps Platform | Final DevOps Lab Project</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

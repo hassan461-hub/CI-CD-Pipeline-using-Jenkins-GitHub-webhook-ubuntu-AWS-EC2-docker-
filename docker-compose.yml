@@ -1,0 +1,171 @@
+version: '3.8'
+
+# Secure Cloud-Native DevOps Platform - Docker Compose Configuration
+# This docker-compose file sets up a complete 3-tier application with monitoring
+
+services:
+
+  # ==================== FRONTEND APPLICATION ====================
+  frontend-app:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend-app
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-app
+    restart: always
+    networks:
+      - devops-network
+    environment:
+      - BACKEND_HOST=backend-app
+      - BACKEND_PORT=3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==================== BACKEND API ====================
+  backend-app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend-app
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    restart: always
+    networks:
+      - devops-network
+    environment:
+      - DB_HOST=mysql-db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=devopsdb
+      - PORT=3000
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # ==================== MYSQL DATABASE ====================
+  mysql-db:
+    image: mysql:8.0
+    container_name: mysql-db
+    ports:
+      - "3307:3306"
+    restart: always
+    networks:
+      - devops-network
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: devopsdb
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: appuser123
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==================== MONITORING - PROMETHEUS ====================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    restart: always
+    networks:
+      - devops-network
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+
+  # ==================== MONITORING - GRAFANA ====================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "4000:3000"
+    restart: always
+    networks:
+      - devops-network
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  # ==================== MONITORING - CADVISOR ====================
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8081:8080"
+    restart: always
+    networks:
+      - devops-network
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+
+  # ==================== MONITORING - NODE EXPORTER ====================
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    restart: always
+    networks:
+      - devops-network
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+# ==================== NETWORKS ====================
+networks:
+  devops-network:
+    driver: bridge
+
+# ==================== VOLUMES ====================
+volumes:
+  mysql_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

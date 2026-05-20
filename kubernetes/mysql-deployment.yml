@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-statefulset
+  namespace: default
+  labels:
+    app: mysql
+spec:
+  serviceName: mysql-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+          name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: root-password
+        - name: MYSQL_DATABASE
+          value: devopsdb
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - mysqladmin ping -h localhost -u root -p$MYSQL_ROOT_PASSWORD
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - mysqladmin ping -h localhost -u root -p$MYSQL_ROOT_PASSWORD
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        - name: mysql-init
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: mysql-init
+        configMap:
+          name: mysql-init-config
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 5Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: default
+  labels:
+    app: mysql
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service for StatefulSet
+  ports:
+  - port: 3306
+    targetPort: 3306
+    protocol: TCP
+    name: mysql
+  selector:
+    app: mysql
+
+---
+# Kubernetes MySQL Notes:
+# 1. StatefulSet ensures ordered pod creation/deletion
+# 2. StatefulSet used for databases to maintain identity
+# 3. PersistentVolumeClaim ensures data survives pod restarts
+# 4. Headless service (clusterIP: None) provides stable DNS
+# 5. ConfigMap should contain init scripts (mounted via ConfigMap)
+# 6. Secrets should be used for passwords
+# 7. Resource limits prevent memory/CPU exhaustion
+# 8. This is suitable for single-instance MySQL; for HA use cluster setup
+
+---
+# ConfigMap creation for init script:
+# kubectl create configmap mysql-init-config --from-file=init.sql
+# Or define inline:
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: mysql-init-config
+# data:
+#   init.sql: |
+#     CREATE DATABASE IF NOT EXISTS devopsdb;
+#     ...
