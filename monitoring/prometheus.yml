@@ -35,9 +35,4 @@ scrape_configs:
 
  
 
-  # ==================== MYSQL DATABASE ====================
-  - job_name: 'mysql-db'
-    static_configs:
-      - targets: ['mysql-db:3306']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
+  
