@@ -15,6 +15,7 @@ pipeline {
         DOCKER_IMAGE_BACKEND = "${PROJECT_NAME}-backend"
         REGISTRY = 'localhost'
         GITHUB_REPO = 'https://github.com/hassan461-hub/CI-CD-Pipeline-using-Jenkins-GitHub-webhook-ubuntu-AWS-EC2-docker-.git'
+        SONAR_TOKEN = credentials('SONAR_TOKEN')
     }
 
     triggers {
@@ -90,6 +91,25 @@ pipeline {
         }
 
         stage('Security Scan') {
+            stage('SonarQube Code Analysis') {
+    steps {
+        echo "========== STAGE: SonarQube Code Analysis =========="
+        sh '''
+            echo "Checking SonarQube server..."
+            if curl -s http://localhost:9000 > /dev/null; then
+                echo "SonarQube is running. Starting code analysis..."
+
+                /opt/sonar-scanner/bin/sonar-scanner \
+                  -Dsonar.projectKey=Secure-Cloud-Native-DevOps-Platform \
+                  -Dsonar.sources=backend,frontend \
+                  -Dsonar.host.url=http://localhost:9000 \
+                  -Dsonar.token=$SONAR_TOKEN || true
+            else
+                echo "SonarQube is not running. Skipping SonarQube analysis."
+            fi
+        '''
+    }
+}
             when {
                 expression {
                     return !params.SKIP_SECURITY
