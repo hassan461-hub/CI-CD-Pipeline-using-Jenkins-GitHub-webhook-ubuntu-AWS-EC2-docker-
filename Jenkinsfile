@@ -50,8 +50,10 @@ pipeline {
                     docker --version
                     echo "Docker Compose Version:"
                     docker compose version
-                    echo "System Info:"
-                    uname -a
+                    echo "Node Version:"
+                    node -v || true
+                    echo "NPM Version:"
+                    npm -v || true
                     echo "Current Directory:"
                     pwd
                     echo "Project Files:"
@@ -66,7 +68,6 @@ pipeline {
                 dir('backend') {
                     sh '''
                         echo "Installing backend dependencies..."
-                        npm --version
                         npm install
                     '''
                 }
@@ -91,25 +92,6 @@ pipeline {
         }
 
         stage('Security Scan') {
-            stage('SonarQube Code Analysis') {
-    steps {
-        echo "========== STAGE: SonarQube Code Analysis =========="
-        sh '''
-            echo "Checking SonarQube server..."
-            if curl -s http://localhost:9000 > /dev/null; then
-                echo "SonarQube is running. Starting code analysis..."
-
-                /opt/sonar-scanner/bin/sonar-scanner \
-                  -Dsonar.projectKey=Secure-Cloud-Native-DevOps-Platform \
-                  -Dsonar.sources=backend,frontend \
-                  -Dsonar.host.url=http://localhost:9000 \
-                  -Dsonar.token=$SONAR_TOKEN || true
-            else
-                echo "SonarQube is not running. Skipping SonarQube analysis."
-            fi
-        '''
-    }
-}
             when {
                 expression {
                     return !params.SKIP_SECURITY
@@ -120,7 +102,7 @@ pipeline {
 
                 dir('backend') {
                     sh '''
-                        echo "Running npm audit..."
+                        echo "Running npm audit security scan..."
                         npm audit --omit=dev || true
                         echo "npm audit completed"
                     '''
@@ -133,6 +115,36 @@ pipeline {
                         trivy fs . --exit-code 0 || true
                     else
                         echo "Trivy is not installed, skipping Trivy scan"
+                    fi
+                '''
+            }
+        }
+
+        stage('SonarQube Code Analysis') {
+            steps {
+                echo "========== STAGE: SonarQube Code Analysis =========="
+                sh '''
+                    echo "Checking SonarQube server..."
+
+                    if curl -s --max-time 10 http://localhost:9000 > /dev/null; then
+                        echo "SonarQube is running."
+
+                        if [ -x /opt/sonar-scanner/bin/sonar-scanner ]; then
+                            echo "Sonar Scanner found. Running analysis..."
+
+                            timeout 300 /opt/sonar-scanner/bin/sonar-scanner \
+                              -Dsonar.projectKey=Secure-Cloud-Native-DevOps-Platform \
+                              -Dsonar.sources=backend,frontend \
+                              -Dsonar.exclusions=**/node_modules/**,**/coverage/**,**/*.md,**/terraform/**,**/ansible/**,**/kubernetes/**,**/docs/** \
+                              -Dsonar.host.url=http://localhost:9000 \
+                              -Dsonar.token=$SONAR_TOKEN || true
+
+                            echo "SonarQube analysis stage completed"
+                        else
+                            echo "Sonar Scanner not found. Skipping SonarQube scan."
+                        fi
+                    else
+                        echo "SonarQube is not running or not responding. Skipping SonarQube analysis."
                     fi
                 '''
             }
@@ -179,35 +191,28 @@ pipeline {
                     echo "Checking running containers..."
                     docker ps
 
-                    echo ""
                     echo "Testing Frontend..."
                     curl -f http://localhost || exit 1
                     echo "Frontend is responding"
 
-                    echo ""
                     echo "Testing Backend Root..."
                     curl -f http://localhost:3000 || exit 1
                     echo "Backend root endpoint is responding"
 
-                    echo ""
                     echo "Testing Backend Health..."
                     curl -f http://localhost:3000/api/health || exit 1
                     echo "Backend health endpoint is responding"
 
-                    echo ""
                     echo "Testing Backend Message API..."
                     curl -f http://localhost:3000/api/message || exit 1
                     echo "Backend message API is responding"
 
-                    echo ""
                     echo "Testing Prometheus..."
                     curl -f http://localhost:9090 || true
 
-                    echo ""
                     echo "Testing Grafana..."
                     curl -f http://localhost:4000 || true
 
-                    echo ""
                     echo "Deployment verification completed"
                 '''
             }
@@ -219,19 +224,18 @@ pipeline {
             echo "========== PIPELINE SUCCESS =========="
             sh '''
                 echo ""
-                echo "╔════════════════════════════════════════════╗"
-                echo "║   BUILD AND DEPLOYMENT SUCCESSFUL          ║"
-                echo "╚════════════════════════════════════════════╝"
+                echo "BUILD AND DEPLOYMENT SUCCESSFUL"
                 echo ""
-                echo "Access the application:"
-                echo "  Frontend:   http://localhost"
-                echo "  Backend:    http://localhost:3000"
-                echo "  Health:     http://localhost:3000/api/health"
-                echo "  Message:    http://localhost:3000/api/message"
-                echo "  Grafana:    http://localhost:4000"
-                echo "  Prometheus: http://localhost:9090"
+                echo "Access URLs:"
+                echo "Frontend:   http://13.51.70.228"
+                echo "Backend:    http://13.51.70.228:3000"
+                echo "Health:     http://13.51.70.228:3000/api/health"
+                echo "Message:    http://13.51.70.228:3000/api/message"
+                echo "Grafana:    http://13.51.70.228:4000"
+                echo "Prometheus: http://13.51.70.228:9090"
+                echo "Jenkins:    http://13.51.70.228:8080"
+                echo "SonarQube:  http://13.51.70.228:9000"
                 echo ""
-                echo "Running containers:"
                 docker ps
             '''
         }
@@ -239,27 +243,16 @@ pipeline {
         failure {
             echo "========== PIPELINE FAILED =========="
             sh '''
-                echo ""
-                echo "╔════════════════════════════════════════════╗"
-                echo "║   BUILD OR DEPLOYMENT FAILED               ║"
-                echo "╚════════════════════════════════════════════╝"
-                echo ""
-                echo "Troubleshooting steps:"
-                echo "1. Check logs: docker compose logs"
-                echo "2. Check backend logs: docker compose logs backend-app"
-                echo "3. Check frontend logs: docker compose logs frontend-app"
-                echo "4. Check MySQL logs: docker compose logs mysql-db"
-                echo "5. Check containers: docker ps -a"
-                echo ""
-                echo "Recent Docker Compose logs:"
+                echo "Build failed. Showing recent logs:"
                 docker compose logs --tail 30 || true
+                docker ps -a || true
             '''
         }
 
         always {
             echo "========== PIPELINE FINISHED =========="
             sh '''
-                echo "Pipeline execution completed at: $(date)"
+                echo "Pipeline completed at: $(date)"
                 echo "Workspace: $(pwd)"
             '''
         }
